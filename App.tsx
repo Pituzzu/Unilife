@@ -2,9 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { User, Circle, AuthState, Notification, ChatMessage, Note, Announcement } from './types';
-import { auth, db } from './firebase';
-// Ensure modular imports for Auth functions
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+// Consolidate imports from our local firebase service
+import { auth, db, onAuthStateChanged, signOut } from './firebase';
 import { 
   collection, 
   onSnapshot, 
@@ -58,7 +57,7 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    // Modular usage of onAuthStateChanged
+    // Modular usage of onAuthStateChanged imported from local firebase.ts
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
@@ -132,7 +131,7 @@ const App: React.FC = () => {
   }, [darkMode]);
 
   const logout = () => {
-    // Modular usage of signOut
+    // Modular usage of signOut imported from local firebase.ts
     signOut(auth);
     setAuthState({ user: null, isAuthenticated: false });
   };

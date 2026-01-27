@@ -1,9 +1,8 @@
 
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth, db, googleProvider } from '../firebase';
-// Ensure modular imports for Auth functions
-import { signInWithPopup, signOut } from 'firebase/auth';
+// Consolidate imports from our local firebase service
+import { auth, db, googleProvider, signInWithPopup, signOut } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { AlertCircle, Copy, Check, Database, ShieldAlert, Server, GraduationCap } from 'lucide-react';
 import { EMAIL_DOMAIN } from '../constants';
@@ -36,7 +35,7 @@ const Login: React.FC<Props> = ({ onDemo }) => {
     setLoading(true);
     setError('');
     try {
-      // Modular usage of signInWithPopup
+      // Use the modular signInWithPopup exported from our local firebase.ts
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
 
