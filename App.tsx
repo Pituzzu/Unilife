@@ -1,8 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { User, Circle, AuthState, Notification, ChatMessage, Note, Announcement } from './types';
-// Consolidate imports from our local firebase service
+import { User, Circle, AuthState, Notification, ChatMessage, Note, Announcement, NoteRequest } from './types';
 import { auth, db, onAuthStateChanged, signOut } from './firebase';
 import { 
   collection, 
@@ -12,11 +10,10 @@ import {
   setDoc, 
   addDoc, 
   query, 
-  where, 
   orderBy,
-  arrayUnion,
-  arrayRemove,
-  getDoc
+  getDoc,
+  increment,
+  arrayUnion
 } from 'firebase/firestore';
 
 import Dashboard from './views/Dashboard';
@@ -24,7 +21,7 @@ import ProfileView from './views/ProfileView';
 import CircleDetail from './views/CircleDetail';
 import CirclesList from './views/CirclesList';
 import Login from './views/Login';
-import { LogOut, LayoutDashboard, Bell, Users2, Moon, Sun, Home, UserCircle, Shield, Wifi, WifiOff, Cloud, Database, AlertTriangle, Github, Globe, Server } from 'lucide-react';
+import { LogOut, LayoutDashboard, Bell, Users2, Moon, Sun, Home, UserCircle, Database, AlertTriangle, Server, BookOpen, Award } from 'lucide-react';
 
 const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('unikore_theme') === 'dark');
@@ -36,28 +33,11 @@ const App: React.FC = () => {
   const [circles, setCircles] = useState<Circle[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [noteRequests, setNoteRequests] = useState<NoteRequest[]>([]);
 
   const currentUserReactive = users.find(u => u.id === authState.user?.id) || authState.user;
 
-  const enterDemoMode = () => {
-    const demoUser: User = {
-      id: 'demo-user-123',
-      name: 'Studente Demo',
-      email: 'demo@unikorestudent.it',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo',
-      role: 'student',
-      friends: [],
-      pendingRequests: [],
-      notifications: [],
-      course: 'Ingegneria Informatica',
-      year: '2° Anno'
-    };
-    setAuthState({ user: demoUser, isAuthenticated: true });
-    setLoading(false);
-  };
-
   useEffect(() => {
-    // Modular usage of onAuthStateChanged imported from local firebase.ts
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
@@ -74,7 +54,8 @@ const App: React.FC = () => {
               pendingRequests: [],
               notifications: [],
               course: 'In attesa di configurazione',
-              year: '1° Anno'
+              year: '1° Anno',
+              karma: 0
             };
             await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
             setAuthState({ user: newUser, isAuthenticated: true });
@@ -84,9 +65,7 @@ const App: React.FC = () => {
           setDbConnected(false);
         }
       } else {
-        if (authState.user?.id !== 'demo-user-123') {
-          setAuthState({ user: null, isAuthenticated: false });
-        }
+        setAuthState({ user: null, isAuthenticated: false });
       }
       setLoading(false);
     });
@@ -96,31 +75,29 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!authState.isAuthenticated) return;
 
-    const unsubUsers = onSnapshot(collection(db, 'users'), 
-      (snapshot) => {
-        setUsers(snapshot.docs.map(doc => doc.data() as User));
-        setDbConnected(true);
-      },
-      (err) => setDbConnected(false)
-    );
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+      setUsers(snapshot.docs.map(doc => doc.data() as User));
+      setDbConnected(true);
+    }, () => setDbConnected(false));
 
-    const unsubCircles = onSnapshot(collection(db, 'circles'), 
-      (snapshot) => setCircles(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Circle))),
-      (err) => console.error("Circles Sync Error:", err)
-    );
+    const unsubCircles = onSnapshot(collection(db, 'circles'), (snapshot) => {
+      setCircles(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Circle)));
+    });
 
-    const unsubNotes = onSnapshot(query(collection(db, 'notes'), orderBy('createdAt', 'desc')), 
-      (snapshot) => setNotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note))),
-      (err) => console.error("Notes Sync Error:", err)
-    );
+    const unsubNotes = onSnapshot(query(collection(db, 'notes'), orderBy('createdAt', 'desc')), (snapshot) => {
+      setNotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note)));
+    });
 
-    const unsubAnnouncements = onSnapshot(query(collection(db, 'announcements'), orderBy('timestamp', 'desc')), 
-      (snapshot) => setAnnouncements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement))),
-      (err) => console.error("Announcements Sync Error:", err)
-    );
+    const unsubAnnouncements = onSnapshot(query(collection(db, 'announcements'), orderBy('timestamp', 'desc')), (snapshot) => {
+      setAnnouncements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement)));
+    });
+
+    const unsubRequests = onSnapshot(query(collection(db, 'noteRequests'), orderBy('timestamp', 'desc')), (snapshot) => {
+      setNoteRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as NoteRequest)));
+    });
 
     return () => {
-      unsubUsers(); unsubCircles(); unsubNotes(); unsubAnnouncements();
+      unsubUsers(); unsubCircles(); unsubNotes(); unsubAnnouncements(); unsubRequests();
     };
   }, [authState.isAuthenticated]);
 
@@ -130,8 +107,44 @@ const App: React.FC = () => {
     localStorage.setItem('unikore_theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
+  const handleSendMessage = async (circleId: string, text: string) => {
+    if (!currentUserReactive) return;
+    const msg: ChatMessage = {
+      id: Math.random().toString(36).substr(2, 9),
+      senderId: currentUserReactive.id,
+      senderName: currentUserReactive.name,
+      senderAvatar: currentUserReactive.avatar,
+      text,
+      timestamp: new Date().toISOString()
+    };
+    await updateDoc(doc(db, 'circles', circleId), { chat: arrayUnion(msg) });
+  };
+
+  const handleAddNote = async (note: Note) => {
+    await addDoc(collection(db, 'notes'), note);
+    // Reward for sharing
+    await updateDoc(doc(db, 'users', currentUserReactive!.id), { karma: increment(10) });
+  };
+
+  const handleAddAnnouncement = async (ann: Announcement) => {
+    await addDoc(collection(db, 'announcements'), ann);
+  };
+
+  const handleAddRequest = async (req: Partial<NoteRequest>) => {
+    const fullReq = {
+      ...req,
+      timestamp: new Date().toISOString(),
+      status: 'open'
+    };
+    await addDoc(collection(db, 'noteRequests'), fullReq);
+  };
+
+  const handleFullfillRequest = async (requestId: string, providerId: string) => {
+    await updateDoc(doc(db, 'noteRequests', requestId), { status: 'fulfilled', fulfilledBy: providerId });
+    await updateDoc(doc(db, 'users', providerId), { karma: increment(50) });
+  };
+
   const logout = () => {
-    // Modular usage of signOut imported from local firebase.ts
     signOut(auth);
     setAuthState({ user: null, isAuthenticated: false });
   };
@@ -140,7 +153,7 @@ const App: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
       <div className="flex flex-col items-center gap-4">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Connessione sicura...</p>
+        <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">UniLife Enna Loading...</p>
       </div>
     </div>
   );
@@ -160,69 +173,15 @@ const App: React.FC = () => {
             />
           )}
           <div className="px-3 py-4 md:p-8">
-            {dbConnected === false && authState.user?.id !== 'demo-user-123' && (
-              <div className="mb-6 p-4 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-2xl flex items-center gap-3 border border-red-200">
-                <WifiOff size={20} />
-                <p className="text-xs font-black uppercase tracking-widest">Firestore Offline: Verifica connessione o regole Firebase.</p>
-              </div>
-            )}
             <Routes>
-              <Route path="/login" element={!authState.isAuthenticated ? <Login onDemo={enterDemoMode} /> : <Navigate to="/" />} />
-              <Route 
-                path="/" 
-                element={authState.isAuthenticated ? (
-                  <Dashboard 
-                    circles={circles} 
-                    currentUser={currentUserReactive!} 
-                    allUsers={users}
-                    onJoin={(id) => updateDoc(doc(db, 'circles', id), { members: arrayUnion(authState.user!.id) })}
-                    onCreateCircle={(data) => addDoc(collection(db, 'circles'), { ...data, creatorId: authState.user!.id, members: [authState.user!.id], createdAt: new Date().toISOString(), chat: [] })}
-                  />
-                ) : <Navigate to="/login" />} 
-              />
-              <Route path="/circles" element={authState.isAuthenticated ? <CirclesList circles={circles} currentUser={currentUserReactive!} onJoin={(id) => updateDoc(doc(db, 'circles', id), { members: arrayUnion(authState.user!.id) })} /> : <Navigate to="/login" />} />
-              <Route path="/profile/:id" element={authState.isAuthenticated ? <ProfileView currentUser={currentUserReactive!} allUsers={users} onUpdate={(u) => updateDoc(doc(db, 'users', u.id), u as any)} /> : <Navigate to="/login" />} />
-              <Route 
-                path="/circle/:id" 
-                element={authState.isAuthenticated ? (
-                  <CircleDetail 
-                    currentUser={currentUserReactive!} 
-                    circles={circles} 
-                    notes={notes}
-                    announcements={announcements}
-                    onAddNote={(n) => addDoc(collection(db, 'notes'), n)}
-                    onAddAnnouncement={(a) => addDoc(collection(db, 'announcements'), a)}
-                    onAcceptMember={() => {}}
-                    onRemoveMember={() => {}}
-                    onSendMessage={(cid, txt) => updateDoc(doc(db, 'circles', cid), { chat: arrayUnion({ id: Date.now().toString(), senderId: authState.user!.id, senderName: authState.user!.name, senderAvatar: authState.user!.avatar, text: txt, timestamp: new Date().toISOString(), reactions: {} }) })}
-                    onToggleReaction={(cid, mid, emoji) => {
-                      const circ = circles.find(c => c.id === cid);
-                      if (!circ) return;
-                      const newChat = circ.chat.map(m => {
-                        if (m.id === mid) {
-                          const reactions = { ...(m.reactions || {}) };
-                          const users = reactions[emoji] ? [...reactions[emoji]] : [];
-                          if (users.includes(authState.user!.id)) {
-                             reactions[emoji] = users.filter(u => u !== authState.user!.id);
-                             if (reactions[emoji].length === 0) delete reactions[emoji];
-                          } else {
-                             reactions[emoji] = [...users, authState.user!.id];
-                          }
-                          return { ...m, reactions };
-                        }
-                        return m;
-                      });
-                      updateDoc(doc(db, 'circles', cid), { chat: newChat });
-                    }}
-                    allUsers={users}
-                  />
-                ) : <Navigate to="/login" />} 
-              />
-              <Route path="*" element={<Navigate to="/" />} />
+              <Route path="/login" element={!authState.isAuthenticated ? <Login /> : <Navigate to="/" />} />
+              <Route path="/" element={authState.isAuthenticated ? <Dashboard circles={circles} currentUser={currentUserReactive!} allUsers={users} onJoin={(id) => updateDoc(doc(db, 'circles', id), { members: arrayUnion(currentUserReactive!.id) })} onCreateCircle={(c) => addDoc(collection(db, 'circles'), { ...c, creatorId: currentUserReactive!.id, members: [currentUserReactive!.id], chat: [], createdAt: new Date().toISOString() })} /> : <Navigate to="/login" />} />
+              <Route path="/profile/:id" element={authState.isAuthenticated ? <ProfileView currentUser={currentUserReactive!} allUsers={users} onUpdate={(u) => setDoc(doc(db, 'users', u.id), u)} /> : <Navigate to="/login" />} />
+              <Route path="/circles" element={authState.isAuthenticated ? <CirclesList circles={circles} currentUser={currentUserReactive!} onJoin={(id) => updateDoc(doc(db, 'circles', id), { members: arrayUnion(currentUserReactive!.id) })} /> : <Navigate to="/login" />} />
+              <Route path="/circle/:id" element={authState.isAuthenticated ? <CircleDetail currentUser={currentUserReactive!} circles={circles} notes={notes} announcements={announcements} noteRequests={noteRequests} allUsers={users} onAddNote={handleAddNote} onAddAnnouncement={handleAddAnnouncement} onAddRequest={handleAddRequest} onFulfillRequest={handleFullfillRequest} onSendMessage={handleSendMessage} onAcceptMember={() => {}} onRemoveMember={() => {}} onToggleReaction={() => {}} /> : <Navigate to="/login" />} />
             </Routes>
           </div>
         </main>
-        {authState.isAuthenticated && <BottomNav user={currentUserReactive!} />}
       </div>
     </HashRouter>
   );
@@ -230,93 +189,70 @@ const App: React.FC = () => {
 
 const Sidebar: React.FC<{ user: User, onLogout: () => void }> = ({ user, onLogout }) => {
   const location = useLocation();
-  const isDemo = user.id === 'demo-user-123';
-  const isFirebase = window.location.hostname.includes('web.app') || window.location.hostname.includes('firebaseapp.com');
+  const menuItems = [
+    { icon: <Home size={22} />, label: 'Home', path: '/' },
+    { icon: <BookOpen size={22} />, label: 'Cerchie', path: '/circles' },
+    { icon: <UserCircle size={22} />, label: 'Profilo', path: `/profile/${user.id}` },
+  ];
 
   return (
-    <aside className="hidden md:flex w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col sticky top-0 h-screen transition-colors">
-      <div className="p-8">
-        <h1 className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-tighter italic">UniLife</h1>
-        <div className="flex flex-col gap-1 mt-2">
-          {isDemo && <span className="text-[8px] font-black uppercase tracking-widest bg-amber-100 text-amber-600 px-2 py-1 rounded-md self-start">Modo Demo</span>}
-          {isFirebase && <span className="text-[8px] font-black uppercase tracking-widest bg-blue-900 text-white px-2 py-1 rounded-md self-start flex items-center gap-1"><Server size={8}/> Firebase Hosting</span>}
-        </div>
-      </div>
-      <nav className="flex-1 px-4 space-y-2 mt-4">
-        <SidebarLink to="/" icon={<LayoutDashboard size={20}/>} label="Dashboard" active={location.pathname === '/'} />
-        <SidebarLink to="/circles" icon={<Users2 size={20}/>} label="Esplora Cerchie" active={location.pathname === '/circles'} />
-        <SidebarLink to={`/profile/${user.id}`} icon={<UserCircle size={20}/>} label="Profilo" active={location.pathname.startsWith('/profile')} />
+    <>
+      {/* Mobile Nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex justify-around p-4 z-50">
+        {menuItems.map(item => (
+          <Link key={item.path} to={item.path} className={`p-2 rounded-2xl ${location.pathname === item.path ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/30' : 'text-slate-400'}`}>
+            {item.icon}
+          </Link>
+        ))}
       </nav>
-      <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
-        {user.githubUsername && (
-          <a href={`https://github.com/${user.githubUsername}`} target="_blank" rel="noreferrer" className="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-2xl text-slate-500 hover:text-slate-800 transition-colors">
-            <Github size={18} />
-            <span className="text-[10px] font-black uppercase tracking-widest">GitHub Sync</span>
-          </a>
-        )}
-        <button onClick={onLogout} className="w-full flex items-center space-x-3 p-4 rounded-2xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all font-black text-xs uppercase tracking-widest">
-          <LogOut size={20} />
-          <span>Esci</span>
-        </button>
-      </div>
-    </aside>
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex flex-col w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 p-8 h-screen sticky top-0">
+        <div className="flex items-center gap-3 mb-12">
+          <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg rotate-3"><Database size={20} /></div>
+          <h1 className="text-2xl font-black italic tracking-tighter dark:text-white">UniLife</h1>
+        </div>
+        <div className="flex-1 space-y-2">
+          {menuItems.map(item => (
+            <Link key={item.path} to={item.path} className={`flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all ${location.pathname === item.path ? 'bg-blue-600 text-white shadow-lg shadow-blue-200 dark:shadow-none' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+              {item.icon} <span>{item.label}</span>
+            </Link>
+          ))}
+        </div>
+        <div className="pt-8 border-t border-slate-100 dark:border-slate-800 space-y-4">
+           <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+              <img src={user.avatar} className="w-10 h-10 rounded-xl object-cover" alt="avatar" />
+              <div className="truncate">
+                <p className="font-black text-[10px] text-slate-800 dark:text-white uppercase truncate">{user.name}</p>
+                <div className="flex items-center gap-1 text-amber-500">
+                  <Award size={10} /> <span className="text-[9px] font-black">{user.karma} Karma</span>
+                </div>
+              </div>
+           </div>
+           <button onClick={onLogout} className="w-full flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-[10px] tracking-widest text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+             <LogOut size={22} /> Esci
+           </button>
+        </div>
+      </aside>
+    </>
   );
 };
 
-const SidebarLink: React.FC<{to: string, icon: React.ReactNode, label: string, active: boolean}> = ({to, icon, label, active}) => (
-  <Link to={to} className={`flex items-center space-x-3 p-4 rounded-2xl transition-all font-bold text-sm group ${active ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-    <span>{icon}</span>
-    <span>{label}</span>
-  </Link>
-);
-
-const Navbar: React.FC<{ user: User, darkMode: boolean, setDarkMode: (d: boolean) => void, dbStatus: boolean | null }> = ({ user, darkMode, setDarkMode, dbStatus }) => {
-  const unreadCount = user?.notifications?.filter(n => !n.read).length || 0;
-
-  return (
-    <header className="h-16 md:h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-10 sticky top-0 z-40 transition-all">
-      <div className="flex items-center gap-4">
-        <h2 className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight leading-none">Ciao, {user?.name?.split(' ')[0]}</h2>
-        <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border transition-colors ${dbStatus ? 'bg-green-50 text-green-600 border-green-100' : 'bg-red-50 text-red-600 border-red-100 animate-pulse'}`}>
-          {dbStatus ? <Database size={12}/> : <AlertTriangle size={12}/>}
-          <span className="text-[9px] font-black uppercase">{dbStatus ? 'Cloud Live' : 'Setup DB'}</span>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <button className="p-3 text-slate-500 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all relative group">
-          <Bell size={18} />
-          {unreadCount > 0 && (
-            <span className="absolute top-2 right-2 w-4 h-4 bg-red-600 text-white text-[8px] font-black flex items-center justify-center rounded-full border-2 border-white dark:border-slate-900 shadow-sm animate-in zoom-in duration-300">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          )}
-        </button>
-
-        <button onClick={() => setDarkMode(!darkMode)} className="p-3 text-slate-500 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
-          {darkMode ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} />}
-        </button>
-      </div>
-    </header>
-  );
-};
-
-const BottomNav: React.FC<{ user: User }> = ({ user }) => {
-  const unreadCount = user?.notifications?.filter(n => !n.read).length || 0;
-  
-  return (
-    <div className="md:hidden fixed bottom-4 left-4 right-4 h-16 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200 dark:border-slate-800 flex items-center justify-around z-50 rounded-[2rem] shadow-2xl">
-      <Link to="/" className="p-4 text-slate-400"><Home size={24} /></Link>
-      <Link to="/circles" className="p-4 text-slate-400"><Users2 size={24} /></Link>
-      <Link to={`/profile/${user.id}`} className="p-1">
-        <div className="relative">
-          <img src={user.avatar} className="w-8 h-8 rounded-full" alt="me" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 border-2 border-white dark:border-slate-900 rounded-full" />
-          )}
-        </div>
-      </Link>
+const Navbar: React.FC<{ user: User, darkMode: boolean, setDarkMode: (v: boolean) => void, dbStatus: boolean | null }> = ({ user, darkMode, setDarkMode, dbStatus }) => (
+  <header className="h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 flex items-center justify-between px-6 md:px-12 sticky top-0 z-40">
+    <div className="flex items-center gap-4">
+      {dbStatus === false && <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1"><AlertTriangle size={10}/> Offline</span>}
+      {dbStatus === true && <span className="bg-green-100 text-green-600 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1"><Server size={10}/> Cloud Sync</span>}
     </div>
-  );
-};
+    <div className="flex items-center gap-2 md:gap-4">
+      <button onClick={() => setDarkMode(!darkMode)} className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 hover:scale-105 transition-all">
+        {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+      </button>
+      <button className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 hover:scale-105 transition-all relative">
+        <Bell size={20} />
+        {user.notifications.some(n => !n.read) && <span className="absolute top-2 right-2 w-2 h-2 bg-blue-600 rounded-full"></span>}
+      </button>
+    </div>
+  </header>
+);
 
 export default App;

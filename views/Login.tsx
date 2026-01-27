@@ -60,7 +60,9 @@ const Login: React.FC<Props> = ({ onDemo }) => {
           pendingRequests: [],
           notifications: [],
           course: 'In attesa di configurazione',
-          year: '1° Anno'
+          year: '1° Anno',
+          // Fix: Added missing 'karma' property to satisfy User interface
+          karma: 0
         };
         await setDoc(userDocRef, newUser);
       }

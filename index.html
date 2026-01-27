@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UniKore Circle</title>
+    <title>UniLife - UniKore Student Circle</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -14,6 +13,14 @@
         }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Animazioni fluide */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float { animation: float 3s ease-in-out infinite; }
     </style>
 <script type="importmap">
 {
@@ -34,7 +41,7 @@
 </head>
 <body>
     <div id="root"></div>
-    <!-- Caricamento dell'applicazione React -->
-    <script type="module" src="index.tsx"></script>
+    <!-- Nota: Usiamo il percorso assoluto /index.tsx per evitare errori MIME nelle rotte dell'app -->
+    <script type="module" src="/index.tsx"></script>
 </body>
 </html>

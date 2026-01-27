@@ -1,5 +1,5 @@
 
-export type NotificationType = 'friend_request' | 'circle_invite' | 'join_request' | 'request_accepted';
+export type NotificationType = 'friend_request' | 'circle_invite' | 'join_request' | 'request_accepted' | 'note_provided';
 export type UserRole = 'student' | 'tutor' | 'representative';
 
 export interface Notification {
@@ -27,6 +27,7 @@ export interface User {
   pendingRequests: string[]; // IDs
   notifications: Notification[];
   githubUsername?: string;
+  karma: number; // Punti guadagnati aiutando i colleghi
 }
 
 export interface ChatMessage {
@@ -36,7 +37,7 @@ export interface ChatMessage {
   senderAvatar: string;
   text: string;
   timestamp: string;
-  reactions?: { [emoji: string]: string[] }; // Mappa emoji -> lista ID utenti
+  reactions?: { [emoji: string]: string[] };
 }
 
 export interface Circle {
@@ -53,12 +54,25 @@ export interface Circle {
   chat: ChatMessage[];
 }
 
+export interface NoteRequest {
+  id: string;
+  circleId: string;
+  authorId: string;
+  authorName: string;
+  authorAvatar: string;
+  topic: string;
+  description: string;
+  timestamp: string;
+  status: 'open' | 'fulfilled';
+  fulfilledBy?: string; // User ID che ha fornito l'appunto
+}
+
 export type NoteVisibility = 'private' | 'group' | 'public';
 
 export interface Note {
   id: string;
   title: string;
-  content: string; // Descrizione dell'appunto per l'IA
+  content: string; 
   authorId: string;
   circleId: string;
   tags: string[];
