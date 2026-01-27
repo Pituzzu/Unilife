@@ -1,11 +1,30 @@
-<div align="center">
+# 🎓 UniLife - UniKore Student Circle
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+UniLife è la piattaforma definitiva per gli studenti dell'Università Kore di Enna.
 
-  <h1>Built with AI Studio</h2>
+## 🚀 Deploy Manuale (Senza GitHub Actions)
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+In questa configurazione, carichi il sito direttamente dal tuo computer senza usare la cartella `.github`.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+### 1. Prerequisiti
+Assicurati di avere la CLI di Firebase:
+```bash
+npm install -g firebase-tools
+```
 
-</div>
+### 2. Caricamento Online
+Ogni volta che vuoi pubblicare le modifiche fatte al codice:
+1. Apri il terminale nella cartella del progetto.
+2. Esegui il comando di deploy:
+```bash
+firebase deploy --only hosting
+```
+
+## 🔑 Accesso Utenti
+- Gli utenti accedono **esclusivamente con l'email @unikorestudent.it** tramite Google.
+- GitHub viene usato solo come "magazzino" (repository) per il tuo codice, non per il funzionamento del sito.
+
+## ✨ Caratteristiche
+- **Privacy Core**: Accesso limitato rigorosamente al dominio UniKore.
+- **Gemini AI**: Analisi intelligente degli appunti e generazione piani di studio.
+- **Zero Automazioni Nascoste**: Gestisci tu quando pubblicare il sito.

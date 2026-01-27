@@ -1,0 +1,7 @@
+{
+  "name": "Unilife",
+  "description": "La piattaforma definitiva per la vita universitaria UniKore: appunti, annunci e gruppi di studio con chat integrata.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
