@@ -15,8 +15,15 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx",
-    "types": ["react", "react-dom", "vite/client"]
+    "jsx": "react-jsx"
   },
-  "include": ["index.tsx", "App.tsx", "types.ts", "geminiService.ts", "firebase.ts", "views/**/*"]
+  "include": [
+    "index.tsx",
+    "App.tsx",
+    "types.ts",
+    "geminiService.ts",
+    "firebase.ts",
+    "constants.ts",
+    "views/**/*"
+  ]
 }
