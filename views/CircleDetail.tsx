@@ -65,7 +65,8 @@ const CircleDetail: React.FC<Props> = ({
   currentUser, circles, notes: allNotes, announcements: allAnnouncements, noteRequests: allRequests,
   allUsers, onAddNote, onAddAnnouncement, onAddRequest, onFulfillRequest, onSendMessage
 }) => {
-  const { id } = useParams<{ id: string }>();
+  // Fix: Removed type argument from useParams because it is untyped from the 'any' import
+  const { id } = useParams();
   const circle = circles.find(c => c.id === id);
   
   const [activeTab, setActiveTab] = useState<'chat' | 'notes' | 'announcements' | 'requests'>('chat');
@@ -338,7 +339,7 @@ const CircleDetail: React.FC<Props> = ({
       {/* Members Modal */}
       {showMembersModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4"><div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setShowMembersModal(false)} />
-          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[3rem] p-8 relative z-10 shadow-2xl">
+          <div className="bg-white dark:bg-slate-900 w-full max-sm rounded-[3rem] p-8 relative z-10 shadow-2xl">
             <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-6">Studenti Attivi</h3>
             <div className="space-y-4">
               {circle.members.map(mid => {

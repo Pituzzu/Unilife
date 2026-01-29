@@ -13,7 +13,8 @@ interface Props {
 }
 
 const ProfileView: React.FC<Props> = ({ currentUser, allUsers, onUpdate }) => {
-  const { id } = useParams<{ id: string }>();
+  // Fix: Removed type argument from useParams because it is untyped from the 'any' import
+  const { id } = useParams();
   const user = allUsers.find(u => u.id === id);
   const isOwnProfile = currentUser.id === id;
 
