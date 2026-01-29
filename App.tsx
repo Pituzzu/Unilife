@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import * as ReactRouterDOM from 'react-router-dom';
-import { User, Circle, AuthState, Notification, ChatMessage, Note, Announcement, NoteRequest } from './types';
+import { User, Circle, AuthState, ChatMessage, Note, Announcement, NoteRequest } from './types';
 import { 
   auth, 
   db, 
@@ -25,7 +25,7 @@ import ProfileView from './views/ProfileView';
 import CircleDetail from './views/CircleDetail';
 import CirclesList from './views/CirclesList';
 import Login from './views/Login';
-import { LogOut, LayoutDashboard, Bell, Users2, Moon, Sun, Home, UserCircle, Database, AlertTriangle, Server, BookOpen, Award } from 'lucide-react';
+import { LogOut, Bell, Users2, Moon, Sun, Home, UserCircle, Database, AlertTriangle, Server, BookOpen, Award } from 'lucide-react';
 
 const { HashRouter, Routes, Route, Navigate, Link, useLocation } = ReactRouterDOM as any;
 
@@ -53,15 +53,16 @@ const App: React.FC = () => {
           } else {
             const newUser: User = {
               id: firebaseUser.uid,
-              name: firebaseUser.displayName || 'Studente',
+              name: firebaseUser.displayName || 'Studente UniKore',
               email: firebaseUser.email || '',
-              avatar: firebaseUser.photoURL || '',
+              avatar: firebaseUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${firebaseUser.uid}`,
               friends: [],
               pendingRequests: [],
               notifications: [],
               course: 'In attesa di configurazione',
               year: '1° Anno',
-              karma: 0
+              karma: 0,
+              role: 'student'
             };
             await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
             setAuthState({ user: newUser, isAuthenticated: true });
@@ -128,20 +129,11 @@ const App: React.FC = () => {
 
   const handleAddNote = async (note: Note) => {
     await addDoc(collection(db, 'notes'), note);
-    // Reward for sharing
     await updateDoc(doc(db, 'users', currentUserReactive!.id), { karma: increment(10) });
   };
 
-  const handleAddAnnouncement = async (ann: Announcement) => {
-    await addDoc(collection(db, 'announcements'), ann);
-  };
-
   const handleAddRequest = async (req: Partial<NoteRequest>) => {
-    const fullReq = {
-      ...req,
-      timestamp: new Date().toISOString(),
-      status: 'open'
-    };
+    const fullReq = { ...req, timestamp: new Date().toISOString(), status: 'open' };
     await addDoc(collection(db, 'noteRequests'), fullReq);
   };
 
@@ -150,10 +142,7 @@ const App: React.FC = () => {
     await updateDoc(doc(db, 'users', providerId), { karma: increment(50) });
   };
 
-  const logout = () => {
-    signOut(auth);
-    setAuthState({ user: null, isAuthenticated: false });
-  };
+  const logout = () => signOut(auth).then(() => setAuthState({ user: null, isAuthenticated: false }));
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
@@ -180,11 +169,11 @@ const App: React.FC = () => {
           )}
           <div className="px-3 py-4 md:p-8">
             <Routes>
-              <Route path="/login" element={!authState.isAuthenticated ? <Login /> : <Navigate to="/" />} />
+              <Route path="/login" element={!authState.isAuthenticated ? <Login onDemo={() => setAuthState({ user: { id: 'demo', name: 'Studente Demo', email: 'demo@unikorestudent.it', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo', karma: 100, friends: [], pendingRequests: [], notifications: [] }, isAuthenticated: true })} /> : <Navigate to="/" />} />
               <Route path="/" element={authState.isAuthenticated ? <Dashboard circles={circles} currentUser={currentUserReactive!} allUsers={users} onJoin={(id: string) => updateDoc(doc(db, 'circles', id), { members: arrayUnion(currentUserReactive!.id) })} onCreateCircle={(c: any) => addDoc(collection(db, 'circles'), { ...c, creatorId: currentUserReactive!.id, members: [currentUserReactive!.id], chat: [], createdAt: new Date().toISOString() })} /> : <Navigate to="/login" />} />
               <Route path="/profile/:id" element={authState.isAuthenticated ? <ProfileView currentUser={currentUserReactive!} allUsers={users} onUpdate={(u: any) => setDoc(doc(db, 'users', u.id), u)} /> : <Navigate to="/login" />} />
               <Route path="/circles" element={authState.isAuthenticated ? <CirclesList circles={circles} currentUser={currentUserReactive!} onJoin={(id: string) => updateDoc(doc(db, 'circles', id), { members: arrayUnion(currentUserReactive!.id) })} /> : <Navigate to="/login" />} />
-              <Route path="/circle/:id" element={authState.isAuthenticated ? <CircleDetail currentUser={currentUserReactive!} circles={circles} notes={notes} announcements={announcements} noteRequests={noteRequests} allUsers={users} onAddNote={handleAddNote} onAddAnnouncement={handleAddAnnouncement} onAddRequest={handleAddRequest} onFulfillRequest={handleFullfillRequest} onSendMessage={handleSendMessage} onAcceptMember={() => {}} onRemoveMember={() => {}} onToggleReaction={() => {}} /> : <Navigate to="/login" />} />
+              <Route path="/circle/:id" element={authState.isAuthenticated ? <CircleDetail currentUser={currentUserReactive!} circles={circles} notes={notes} announcements={announcements} noteRequests={noteRequests} allUsers={users} onAddNote={handleAddNote} onAddAnnouncement={() => {}} onAddRequest={handleAddRequest} onFulfillRequest={handleFullfillRequest} onSendMessage={handleSendMessage} onAcceptMember={() => {}} onRemoveMember={() => {}} onToggleReaction={() => {}} /> : <Navigate to="/login" />} />
             </Routes>
           </div>
         </main>
@@ -203,7 +192,6 @@ const Sidebar: React.FC<{ user: User, onLogout: () => void }> = ({ user, onLogou
 
   return (
     <>
-      {/* Mobile Nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex justify-around p-4 z-50">
         {menuItems.map(item => (
           <Link key={item.path} to={item.path} className={`p-2 rounded-2xl ${location.pathname === item.path ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/30' : 'text-slate-400'}`}>
@@ -211,7 +199,6 @@ const Sidebar: React.FC<{ user: User, onLogout: () => void }> = ({ user, onLogou
           </Link>
         ))}
       </nav>
-      {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 p-8 h-screen sticky top-0">
         <div className="flex items-center gap-3 mb-12">
           <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg rotate-3"><Database size={20} /></div>
@@ -255,7 +242,7 @@ const Navbar: React.FC<{ user: User, darkMode: boolean, setDarkMode: (v: boolean
       </button>
       <button className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 hover:scale-105 transition-all relative">
         <Bell size={20} />
-        {user.notifications.some(n => !n.read) && <span className="absolute top-2 right-2 w-2 h-2 bg-blue-600 rounded-full"></span>}
+        {user.notifications?.some(n => !n.read) && <span className="absolute top-2 right-2 w-2 h-2 bg-blue-600 rounded-full"></span>}
       </button>
     </div>
   </header>
