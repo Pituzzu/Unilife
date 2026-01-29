@@ -1,8 +1,10 @@
 
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { User, Notification, UserRole } from '../types';
 import { UserPlus, Check, Mail, GraduationCap, Edit3, Award, Calendar, Hash, Bookmark, Share2, MapPin, Users2, ExternalLink, Github } from 'lucide-react';
+
+const { useParams, Link } = ReactRouterDOM as any;
 
 interface Props {
   currentUser: User;

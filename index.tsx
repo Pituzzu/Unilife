@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
-import { HashRouter, Routes, Route, Navigate, Link, useLocation, useParams, useNavigate } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import * as firebaseApp from "firebase/app";
 import * as firebaseAuth from "firebase/auth";
 import * as firebaseFirestore from "firebase/firestore";
@@ -11,6 +12,9 @@ import {
   ChevronLeft, Megaphone, X, Search, Globe, FileUp, Download, Plus, GraduationCap, 
   ExternalLink, Trophy, HelpCircle, HandHelping, UserPlus, Check, Edit3, MapPin, Calendar, Mail, Github
 } from 'lucide-react';
+
+// Access react-router-dom components via namespace to avoid import errors
+const { HashRouter, Routes, Route, Navigate, Link, useLocation, useParams, useNavigate } = ReactRouterDOM as any;
 
 // --- TYPES ---
 export type NotificationType = 'friend_request' | 'circle_invite' | 'join_request' | 'request_accepted' | 'note_provided';

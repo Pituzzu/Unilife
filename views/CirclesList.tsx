@@ -1,8 +1,10 @@
 
 import React, { useState } from 'react';
 import { Circle, User } from '../types';
-import { Link } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { Search, Users2, ArrowRight, Filter, BookOpen, GraduationCap, Plus } from 'lucide-react';
+
+const { Link } = ReactRouterDOM as any;
 
 interface Props {
   circles: Circle[];

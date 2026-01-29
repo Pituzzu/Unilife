@@ -1,8 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { User, Circle, AuthState, Notification, ChatMessage, Note, Announcement, NoteRequest } from './types';
-import { auth, db, onAuthStateChanged, signOut } from './firebase';
 import { 
+  auth, 
+  db, 
+  onAuthStateChanged, 
+  signOut,
   collection, 
   onSnapshot, 
   doc, 
@@ -14,7 +18,7 @@ import {
   getDoc,
   increment,
   arrayUnion
-} from 'firebase/firestore';
+} from './firebase';
 
 import Dashboard from './views/Dashboard';
 import ProfileView from './views/ProfileView';
@@ -22,6 +26,8 @@ import CircleDetail from './views/CircleDetail';
 import CirclesList from './views/CirclesList';
 import Login from './views/Login';
 import { LogOut, LayoutDashboard, Bell, Users2, Moon, Sun, Home, UserCircle, Database, AlertTriangle, Server, BookOpen, Award } from 'lucide-react';
+
+const { HashRouter, Routes, Route, Navigate, Link, useLocation } = ReactRouterDOM as any;
 
 const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('unikore_theme') === 'dark');
@@ -38,7 +44,7 @@ const App: React.FC = () => {
   const currentUserReactive = users.find(u => u.id === authState.user?.id) || authState.user;
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: any) => {
       if (firebaseUser) {
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
@@ -75,25 +81,25 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!authState.isAuthenticated) return;
 
-    const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
-      setUsers(snapshot.docs.map(doc => doc.data() as User));
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot: any) => {
+      setUsers(snapshot.docs.map((doc: any) => doc.data() as User));
       setDbConnected(true);
     }, () => setDbConnected(false));
 
-    const unsubCircles = onSnapshot(collection(db, 'circles'), (snapshot) => {
-      setCircles(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Circle)));
+    const unsubCircles = onSnapshot(collection(db, 'circles'), (snapshot: any) => {
+      setCircles(snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Circle)));
     });
 
-    const unsubNotes = onSnapshot(query(collection(db, 'notes'), orderBy('createdAt', 'desc')), (snapshot) => {
-      setNotes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Note)));
+    const unsubNotes = onSnapshot(query(collection(db, 'notes'), orderBy('createdAt', 'desc')), (snapshot: any) => {
+      setNotes(snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Note)));
     });
 
-    const unsubAnnouncements = onSnapshot(query(collection(db, 'announcements'), orderBy('timestamp', 'desc')), (snapshot) => {
-      setAnnouncements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Announcement)));
+    const unsubAnnouncements = onSnapshot(query(collection(db, 'announcements'), orderBy('timestamp', 'desc')), (snapshot: any) => {
+      setAnnouncements(snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Announcement)));
     });
 
-    const unsubRequests = onSnapshot(query(collection(db, 'noteRequests'), orderBy('timestamp', 'desc')), (snapshot) => {
-      setNoteRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as NoteRequest)));
+    const unsubRequests = onSnapshot(query(collection(db, 'noteRequests'), orderBy('timestamp', 'desc')), (snapshot: any) => {
+      setNoteRequests(snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as NoteRequest)));
     });
 
     return () => {
@@ -175,9 +181,9 @@ const App: React.FC = () => {
           <div className="px-3 py-4 md:p-8">
             <Routes>
               <Route path="/login" element={!authState.isAuthenticated ? <Login /> : <Navigate to="/" />} />
-              <Route path="/" element={authState.isAuthenticated ? <Dashboard circles={circles} currentUser={currentUserReactive!} allUsers={users} onJoin={(id) => updateDoc(doc(db, 'circles', id), { members: arrayUnion(currentUserReactive!.id) })} onCreateCircle={(c) => addDoc(collection(db, 'circles'), { ...c, creatorId: currentUserReactive!.id, members: [currentUserReactive!.id], chat: [], createdAt: new Date().toISOString() })} /> : <Navigate to="/login" />} />
-              <Route path="/profile/:id" element={authState.isAuthenticated ? <ProfileView currentUser={currentUserReactive!} allUsers={users} onUpdate={(u) => setDoc(doc(db, 'users', u.id), u)} /> : <Navigate to="/login" />} />
-              <Route path="/circles" element={authState.isAuthenticated ? <CirclesList circles={circles} currentUser={currentUserReactive!} onJoin={(id) => updateDoc(doc(db, 'circles', id), { members: arrayUnion(currentUserReactive!.id) })} /> : <Navigate to="/login" />} />
+              <Route path="/" element={authState.isAuthenticated ? <Dashboard circles={circles} currentUser={currentUserReactive!} allUsers={users} onJoin={(id: string) => updateDoc(doc(db, 'circles', id), { members: arrayUnion(currentUserReactive!.id) })} onCreateCircle={(c: any) => addDoc(collection(db, 'circles'), { ...c, creatorId: currentUserReactive!.id, members: [currentUserReactive!.id], chat: [], createdAt: new Date().toISOString() })} /> : <Navigate to="/login" />} />
+              <Route path="/profile/:id" element={authState.isAuthenticated ? <ProfileView currentUser={currentUserReactive!} allUsers={users} onUpdate={(u: any) => setDoc(doc(db, 'users', u.id), u)} /> : <Navigate to="/login" />} />
+              <Route path="/circles" element={authState.isAuthenticated ? <CirclesList circles={circles} currentUser={currentUserReactive!} onJoin={(id: string) => updateDoc(doc(db, 'circles', id), { members: arrayUnion(currentUserReactive!.id) })} /> : <Navigate to="/login" />} />
               <Route path="/circle/:id" element={authState.isAuthenticated ? <CircleDetail currentUser={currentUserReactive!} circles={circles} notes={notes} announcements={announcements} noteRequests={noteRequests} allUsers={users} onAddNote={handleAddNote} onAddAnnouncement={handleAddAnnouncement} onAddRequest={handleAddRequest} onFulfillRequest={handleFullfillRequest} onSendMessage={handleSendMessage} onAcceptMember={() => {}} onRemoveMember={() => {}} onToggleReaction={() => {}} /> : <Navigate to="/login" />} />
             </Routes>
           </div>

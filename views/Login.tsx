@@ -1,12 +1,22 @@
 
 import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 // Consolidate imports from our local firebase service
-import { auth, db, googleProvider, signInWithPopup, signOut } from '../firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { 
+  auth, 
+  db, 
+  googleProvider, 
+  signInWithPopup, 
+  signOut,
+  doc,
+  getDoc,
+  setDoc
+} from '../firebase';
 import { AlertCircle, Copy, Check, Database, ShieldAlert, Server, GraduationCap } from 'lucide-react';
 import { EMAIL_DOMAIN } from '../constants';
 import { User } from '../types';
+
+const { useNavigate } = ReactRouterDOM as any;
 
 interface Props {
   onDemo?: () => void;

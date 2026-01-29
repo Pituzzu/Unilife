@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import * as ReactRouterDOM from 'react-router-dom';
 import { Circle, Note, User, Announcement, ChatMessage, NoteVisibility, NoteRequest } from '../types';
 import { summarizeNote, suggestStudyPlan } from '../geminiService';
 import { 
@@ -8,6 +9,8 @@ import {
   ShieldCheck as ShieldIcon, PlusCircle, 
   Search, Globe, FileUp, Download, Plus, GraduationCap, ExternalLink, Smile, MoreHorizontal, HelpCircle, HandHelping, Trophy
 } from 'lucide-react';
+
+const { useParams, Link } = ReactRouterDOM as any;
 
 interface Props {
   currentUser: User;
